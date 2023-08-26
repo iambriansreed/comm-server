@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import { SocketEvent, Room, PayloadLogin, PayloadEvent, RoomEvent, PayloadServerUpdate } from '@bsr-comm/types';
 import data from './new-room-data';
 
-const HOST = process.env.HOST!;
+const HOST = process.env.RENDER_EXTERNAL_HOSTNAME || process.env.HOST!;
 const PORT = Number(process.env.PORT);
 
 const httpServer = createServer();
