@@ -7,8 +7,8 @@
     },
     "scripts": {
         "build": "tsc",
-        "start": "node build/server.js",
-        "dev": "CORS_ORIGINS=http://localhost:8080 HOST=localhost PORT=3000 ./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"npm run build && npm run start\""
+        "start": "npm run build && node build/server.js",
+        "dev": "CORS_ORIGINS=http://localhost:8080 HOST=localhost PORT=3000 ./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"npm run start\""
     },
     "devDependencies": {
         "@bsr-comm/types": "github:iambriansreed/comm-types",
