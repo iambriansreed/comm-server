@@ -38,8 +38,6 @@ io.on('connection', (socket) => {
                 rooms: Object.keys(rooms),
             } as PayloadServerUpdate);
         } else {
-            rooms[payload.room].usernames.push(payload.username);
-
             const joinEvent = {
                 type: 'join',
                 data: { ...payload },
@@ -47,7 +45,15 @@ io.on('connection', (socket) => {
                 username: 'SYSTEM',
             } as RoomEvent;
 
-            rooms[payload.room].events.push(joinEvent);
+            const { events, name, usernames } = rooms[payload.room];
+
+            rooms[payload.room] = {
+                name,
+                events: [...events, joinEvent],
+                usernames: [...usernames, payload.username].filter(
+                    (u, index, arr) => index === arr.findIndex((u1) => u1 === u)
+                ),
+            };
 
             socket.to(payload.room).emit(SocketEvent.EventFromServer, joinEvent);
         }
