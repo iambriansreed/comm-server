@@ -1,16 +1,15 @@
-import rooms, { newEvent, roomCreate, roomJoin, roomLeave } from './room-manager';
+import roomManager, { getNewName } from './room-manager';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import {
     SocketEvent,
     Room,
-    RoomEvent,
     PayloadRoomJoin,
     PayloadRoomLeave,
     PayloadClientInit,
-    PayloadRoomEvent,
+    PayloadRoomMessage,
+    EventMessage,
 } from '@bsr-comm/types';
-import data from './new-room-data';
 
 const HOST = process.env.HOST || process.env.RENDER_EXTERNAL_HOSTNAME!;
 const PORT = Number(process.env.PORT);
@@ -25,58 +24,48 @@ const io = new Server(httpServer, {
 });
 
 io.on('connection', (socket) => {
-    //
+    const onRoomRejoin = (payload: PayloadRoomJoin, callback: (room: Room | false) => void) => {
+        socket.join(payload.room);
+
+        const room = roomManager.roomJoin(payload, true);
+
+        callback(room);
+    };
+
     const onRoomJoin = (payload: PayloadRoomJoin, callback: (room: Room | false) => void) => {
         socket.join(payload.room);
 
-        if (!rooms[payload.room]) {
-            roomCreate(payload, callback);
-        } else {
-            roomJoin(payload, callback);
-        }
+        const room = roomManager.roomJoin(payload);
 
-        callback(rooms[payload.room]);
+        socket.to(payload.room).emit(SocketEvent.RoomEvent, room.events[room.events.length - 1]);
+
+        callback(room);
     };
 
-    const onRoomLeave = (payload: PayloadRoomLeave, callback: (room: Room | false) => void) => {
-        if (!rooms[payload.room]) {
-            callback(false);
-            return;
-        }
+    const onRoomLeave = (payload: PayloadRoomLeave) => {
+        const event = roomManager.roomLeave(payload);
 
-        roomLeave(payload, callback);
+        if (event) socket.to(payload.room).emit(SocketEvent.RoomEvent, event);
     };
 
-    const onRoomEvent = ({ data, room, type, username }: PayloadRoomEvent, callback: (newEvent: RoomEvent) => void) => {
-        const event = newEvent({ data, type, username });
+    const onRoomEvent = (payload: PayloadRoomMessage, callback: (newEvent: EventMessage) => void) => {
+        const event = roomManager.addEvent(payload);
 
-        rooms[room].events.push(event);
-        socket.to(room).emit(SocketEvent.RoomEvent, event);
+        socket.to(payload.room).emit(SocketEvent.RoomEvent, event);
 
         callback(event);
     };
 
-    const onRoomNewName = (callback: (roomName: string) => void) => {
-        function random(min: number, max: number) {
-            return Math.floor(Math.random() * (max - min + 1) + min);
-        }
-
-        callback(
-            [
-                data.adjectives[random(0, data.adjectives.length - 1)],
-                data.colors[random(0, data.colors.length - 1)],
-                data.animals[random(0, data.animals.length - 1)],
-            ].join('-')
-        );
-    };
+    const onRoomNewName = (callback: (roomName: string) => void) => callback(getNewName());
 
     const onClientInit = (callback: (serverUpdate: PayloadClientInit) => {}) => {
-        callback({ rooms: Object.keys(rooms) });
+        callback({ rooms: roomManager.getNames() });
     };
 
     socket.on(SocketEvent.ClientInit, onClientInit);
     socket.on(SocketEvent.RoomEvent, onRoomEvent);
     socket.on(SocketEvent.RoomJoin, onRoomJoin);
+    socket.on(SocketEvent.RoomRejoin, onRoomRejoin);
     socket.on(SocketEvent.RoomLeave, onRoomLeave);
     socket.on(SocketEvent.RoomNewName, onRoomNewName);
 });
