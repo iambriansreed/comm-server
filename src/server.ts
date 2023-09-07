@@ -1,14 +1,16 @@
-import roomManager, { getNewName } from './room-manager';
+import channelManager from './channels-manager';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import {
+    ChannelAction,
+    ChannelEvent,
+    ChannelNameResponse,
+    ClientStatusResponse,
+    ErrorResponse,
+    EventAction,
+    LoginResponse,
+    LogoutResponse,
     SocketEvent,
-    Room,
-    PayloadRoomJoin,
-    PayloadRoomLeave,
-    PayloadClientInit,
-    PayloadRoomMessage,
-    EventMessage,
 } from '@bsr-comm/types';
 
 const HOST = process.env.HOST || process.env.RENDER_EXTERNAL_HOSTNAME!;
@@ -24,50 +26,58 @@ const io = new Server(httpServer, {
 });
 
 io.on('connection', (socket) => {
-    const onRoomRejoin = (payload: PayloadRoomJoin, callback: (room: Room | false) => void) => {
-        socket.join(payload.room);
+    socket.on(
+        SocketEvent.ClientStatus,
+        //
+        (callback?: (serverUpdate: ClientStatusResponse) => void) => {
+            const channels = channelManager.getChannels();
+            callback?.({ channels } as ClientStatusResponse);
+        }
+    );
 
-        const room = roomManager.roomJoin(payload, true);
+    socket.on(
+        SocketEvent.ChannelEvent,
+        //
+        (payload: EventAction, callback?: (event: ChannelEvent | null) => void) => {
+            if (typeof payload.data !== 'object') {
+                callback?.(null);
+                return;
+            }
 
-        callback(room);
-    };
+            const event = channelManager.addEvent(payload);
 
-    const onRoomJoin = (payload: PayloadRoomJoin, callback: (room: Room | false) => void) => {
-        socket.join(payload.room);
+            socket.broadcast.to(payload.channel).emit(SocketEvent.ChannelEvent, event);
+            socket.broadcast.to(payload.channel).emit(SocketEvent.ChannelEvent, event);
+            callback?.(event);
+        }
+    );
 
-        const room = roomManager.roomJoin(payload);
+    socket.on(SocketEvent.ChannelName, (callback?: (response: ChannelNameResponse) => void) =>
+        callback?.({ name: channelManager.getNewName() } as ChannelNameResponse)
+    );
 
-        socket.to(payload.room).emit(SocketEvent.RoomEvent, room.events[room.events.length - 1]);
+    socket.on(
+        SocketEvent.ChannelLogin,
+        (payload: ChannelAction, callback?: (response: LoginResponse | ErrorResponse) => void) => {
+            const response = channelManager.channelLogin(payload);
 
-        callback(room);
-    };
+            if ('error' in response) {
+                callback?.(response);
+                return;
+            }
 
-    const onRoomLeave = (payload: PayloadRoomLeave) => {
-        const event = roomManager.roomLeave(payload);
+            socket.join(payload.channel);
+            socket.broadcast.emit(SocketEvent.ChannelLogin, response);
+            callback?.(response);
+        }
+    );
 
-        if (event) socket.to(payload.room).emit(SocketEvent.RoomEvent, event);
-    };
-
-    const onRoomEvent = (payload: PayloadRoomMessage, callback: (newEvent: EventMessage) => void) => {
-        const event = roomManager.addEvent(payload);
-
-        socket.to(payload.room).emit(SocketEvent.RoomEvent, event);
-
-        callback(event);
-    };
-
-    const onRoomNewName = (callback: (roomName: string) => void) => callback(getNewName());
-
-    const onClientInit = (callback: (serverUpdate: PayloadClientInit) => {}) => {
-        callback({ rooms: roomManager.getNames() });
-    };
-
-    socket.on(SocketEvent.ClientInit, onClientInit);
-    socket.on(SocketEvent.RoomEvent, onRoomEvent);
-    socket.on(SocketEvent.RoomJoin, onRoomJoin);
-    socket.on(SocketEvent.RoomRejoin, onRoomRejoin);
-    socket.on(SocketEvent.RoomLeave, onRoomLeave);
-    socket.on(SocketEvent.RoomNewName, onRoomNewName);
+    socket.on(SocketEvent.ChannelLogout, (payload: ChannelAction, callback?: (response: LogoutResponse) => void) => {
+        const response = channelManager.channelLogout(payload);
+        socket.broadcast.emit(SocketEvent.ChannelLogout, response);
+        socket.leave(payload.channel);
+        callback?.(response);
+    });
 });
 
 httpServer.listen(PORT, HOST, () => {
