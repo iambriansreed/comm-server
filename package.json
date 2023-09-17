@@ -2,16 +2,14 @@
     "name": "@bsr-comm/server",
     "version": "0.0.1",
     "description": "server",
-    "dependencies": {
-        "socket.io": "^4.1.2"
-    },
     "scripts": {
         "build": "tsc",
         "start": "npm run build && node build/server.js",
         "dev": "CORS_ORIGINS=http://localhost:8080 HOST=localhost PORT=3000 ./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"npm run start\""
     },
     "devDependencies": {
-        "@bsr-comm/types": "github:iambriansreed/comm-types",
+        "socket.io": "^4.1.2",
+        "@bsr-comms/utils": "github:iambriansreed/comms-utils",
         "@types/node": "^20.4.8",
         "http-server": "^14.1.1",
         "nodemon": "^3.0.1",
