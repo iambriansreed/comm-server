@@ -5,7 +5,7 @@
     "scripts": {
         "build": "tsc",
         "start": "npm run build && node build/server.js",
-        "dev": "CORS_ORIGINS=http://localhost:8080 HOST=localhost PORT=3000 ./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"npm run start\""
+        "dev": "CORS_ORIGIN=* HOST=localhost PORT=3000 ./node_modules/nodemon/bin/nodemon.js -e ts  --exec \"npm run start\""
     },
     "devDependencies": {
         "socket.io": "^4.1.2",
