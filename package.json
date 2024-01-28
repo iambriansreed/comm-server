@@ -9,7 +9,7 @@
     },
     "devDependencies": {
         "socket.io": "^4.1.2",
-        "@bsr-comms/utils": "github:iambriansreed/comms-utils",
+        "@bsr-comm/utils": "github:iambriansreed/comm-utils",
         "@types/node": "^20.4.8",
         "http-server": "^14.1.1",
         "nodemon": "^3.0.1",

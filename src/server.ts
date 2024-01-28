@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { Server, ServerOptions } from 'socket.io';
-import { SocketServer } from '@bsr-comms/utils';
+import { SocketServer } from '@bsr-comm/utils';
 import crypto from 'crypto';
 
 const HOST = process.env.HOST || process.env.RENDER_EXTERNAL_HOSTNAME!;
